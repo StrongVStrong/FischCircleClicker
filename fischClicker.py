@@ -15,7 +15,7 @@ image = 'shake.png'
 running = False
 
 # Track the last clicked positions
-clicked_positions = []
+last_click_position = None
 ignore_radius = 50  # Radius to ignore recently clicked spots
 cooldown = 0.1  # Cooldown time between clicks
 
@@ -27,12 +27,12 @@ def distance(p1, p2):
 
 def is_within_ignore_radius(x, y):
     """
-    Check if the given position (x, y) is within the ignore radius of any clicked position.
+    Check if the given position (x, y) is within the ignore radius.
     """
-    for pos in clicked_positions:
-        if distance(pos, (x, y)) <= ignore_radius:
-            return True
-    return False
+    global last_click_position
+    if last_click_position is None:
+        return False
+    return distance(last_click_position, (x, y)) <= ignore_radius
 
 def move_mouse_smoothly(start_x, start_y, target_x, target_y, duration=0.1):
     """
@@ -56,7 +56,7 @@ def move_and_click_with_ahk(x, y):
     """
     Use AutoHotkey to move the mouse and perform a click with smooth motion.
     """
-    global clicked_positions, last_click_time
+    global last_click_position, last_click_time
 
     # Add random offsets to make it look human
     offset_x = random.randint(-5, 5)  # Slight random offset for precision
@@ -64,7 +64,7 @@ def move_and_click_with_ahk(x, y):
     target_x = x + offset_x
     target_y = y + offset_y
 
-    # Check if this position is within the ignore radius
+    # Check if this position is within the ignore radius of the last clicked position
     if is_within_ignore_radius(target_x, target_y):
         print(f"Skipping position ({target_x}, {target_y}) within ignore radius")
         return
@@ -79,11 +79,7 @@ def move_and_click_with_ahk(x, y):
     ahk.click()
 
     # Store the clicked position
-    clicked_positions.append((target_x, target_y))
-
-    # Remove older positions to maintain only recent clicks
-    if len(clicked_positions) > 10:
-        clicked_positions.pop(0)
+    last_click_position = (target_x, target_y)
 
     # Update the last click time
     last_click_time = time.time()
@@ -119,11 +115,12 @@ try:
                     
                     # Move and click using AutoHotkey
                     move_and_click_with_ahk(center_x, center_y)
-                else:
-                    print("its not there")
             except pyautogui.ImageNotFoundException:
                 # Handle the exception and continue
+                print("its not there")
                 pass
+            except Exception as e:
+                print(f"Unexpected error: {e}")
         time.sleep(0.01)  # Minimal delay to prevent high CPU usage
 except KeyboardInterrupt:
     print("Exiting...")
